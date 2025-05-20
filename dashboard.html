@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - JomBantu</title>
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <style>
+        /* Admin-specific styles */
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+        
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .admin-table th, .admin-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .admin-table th {
+            background-color: var(--light-grey);
+            color: var(--primary-blue);
+        }
+        
+        .status-badge {
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-suspended {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="../../index.html" class="logo">
+                    <img src="../../images/logo.png" alt="JomBantu Logo">
+                    <span>JomBantu</span>
+                </a>
+            </div>
+            
+            <div class="user-profile">
+                <div class="avatar">AD</div>
+                <div class="user-info">
+                    <h3>Admin User</h3>
+                    <p>Administrator</p>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active">
+                        <a href="dashboard.html">
+                            <i class="icon">📊</i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="job-management.html">
+                            <i class="icon">📋</i>
+                            <span>Job Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="user-management.html">
+                            <i class="icon">👥</i>
+                            <span>User Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="reports.html">
+                            <i class="icon">📈</i>
+                            <span>Reports</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="../../index.html">
+                            <i class="icon">🌐</i>
+                            <span>View Site</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="../../index.html" class="logout-btn">
+                    <i class="icon">🚪</i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Admin Dashboard</h1>
+                <div class="header-actions">
+                    <button class="notification-btn">
+                        <i class="icon">🔔</i>
+                        <span class="badge">5</span>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="stats-grid admin-stats-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p class="stat-value">248</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Jobs</h3>
+                    <p class="stat-value">56</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Pending Approval</h3>
+                    <p class="stat-value">12</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Reports</h3>
+                    <p class="stat-value">8</p>
+                </div>
+            </div>
+            
+            <section class="recent-activity">
+                <h2>Recent Activity</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>User</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Job Post</td>
+                            <td>Graphic Design Needed</td>
+                            <td>user123</td>
+                            <td>10 mins ago</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>User Report</td>
+                            <td>Inappropriate content</td>
+                            <td>user456</td>
+                            <td>25 mins ago</td>
+                            <td><span class="status-badge status-pending">Pending</span></td>
+                        </tr>
+                        <tr>
+                            <td>Account</td>
+                            <td>New registration</td>
+                            <td>user789</td>
+                            <td>1 hour ago</td>
+                            <td><span class="status-badge status-active">Verified</span></td>
+                        </tr>
+                        <tr>
+                            <td>Job Post</td>
+                            <td>Tutoring Service</td>
+                            <td>user101</td>
+                            <td>2 hours ago</td>
+                            <td><span class="status-badge status-active">Active</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+    
+    <script src="../../js/main.js"></script>
+</body>
+</html>
