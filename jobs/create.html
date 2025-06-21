@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Job - JomBantu</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .job-form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .job-form h2 {
+            color: var(--primary-blue);
+            margin-top: 0;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark-grey);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        .skills-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .skill-tag {
+            background-color: var(--light-grey);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .skill-tag button {
+            background: none;
+            border: none;
+            margin-left: 0.3rem;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        #skillInput {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-blue);
+            color: white;
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-blue);
+        }
+        
+        .btn-secondary {
+            background-color: white;
+            color: var(--secondary-blue);
+            border: 1px solid var(--secondary-blue);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--light-grey);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="../index.html" class="logo">
+            <img src="../images/logo.png" alt="JomBantu Logo">
+            <span>JomBantu</span>
+        </a>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="browse.html">Browse Jobs</a></li>
+                <li><a href="create.html" class="active">Post a Job</a></li>
+                <li><a href="../dashboard.html">Dashboard</a></li>
+            </ul>
+        </nav>
+        <div class="auth-buttons">
+            <a href="../login.html" class="login-btn">Login</a>
+            <a href="../register.html" class="register-btn">Register</a>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="job-form-container">
+            <form class="job-form" id="jobCreationForm">
+                <h2>Create New Job Posting</h2>
+                
+                <div class="form-group">
+                    <label for="jobTitle">Job Title*</label>
+                    <input type="text" id="jobTitle" name="jobTitle" required placeholder="e.g. Graphic Designer for Event Poster">
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobCategory">Category*</label>
+                    <select id="jobCategory" name="jobCategory" required>
+                        <option value="">Select a category</option>
+                        <option value="design">Design</option>
+                        <option value="tutoring">Tutoring</option>
+                        <option value="photography">Photography</option>
+                        <option value="writing">Writing</option>
+                        <option value="errands">Errands</option>
+                        <option value="tech">Tech Support</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobDescription">Job Description*</label>
+                    <textarea id="jobDescription" name="jobDescription" required placeholder="Describe the job in detail..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="jobBudget">Budget (RM)*</label>
+                        <input type="number" id="jobBudget" name="jobBudget" min="0" step="5" required placeholder="50">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="jobDeadline">Deadline*</label>
+                        <input type="date" id="jobDeadline" name="jobDeadline" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="jobLocation">Location*</label>
+                    <input type="text" id="jobLocation" name="jobLocation" required placeholder="e.g. Main Campus Library">
+                </div>
+                
+                <div class="form-group">
+                    <label>Required Skills (optional)</label>
+                    <div class="skills-input">
+                        <input type="text" id="skillInput" placeholder="Add skill and press Enter">
+                    </div>
+                    <div id="skillsContainer" class="skills-input"></div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Post Job</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 JomBantu - Campus Gig Platform. All rights reserved.</p>
+    </footer>
+    
+    <script src="../js/main.js"></script>
+    <script>
+        // Skills tagging functionality
+        document.getElementById('skillInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const skill = this.value.trim();
+                if (skill) {
+                    addSkillTag(skill);
+                    this.value = '';
+                }
+            }
+        });
+        
+        function addSkillTag(skill) {
+            const container = document.getElementById('skillsContainer');
+            const tag = document.createElement('div');
+            tag.className = 'skill-tag';
+            tag.innerHTML = `
+                ${skill}
+                <button type="button" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(tag);
+            
+            // Create hidden input to store skills
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'skills[]';
+            input.value = skill;
+            tag.appendChild(input);
+        }
+    </script>
+</body>
+</html>

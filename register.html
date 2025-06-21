@@ -17,7 +17,7 @@
             <p>Join our campus gig platform today</p>
         </div>
         
-        <form id="registerForm" class="auth-form">
+        <form id="registerForm" name="save" action="customerdb.php" method="post" name="save" class="auth-form">
             <div class="form-group">
                 <label for="fullName">Full Name</label>
                 <input type="text" id="fullName" name="fullName" required placeholder="John Doe">
@@ -27,10 +27,9 @@
                 <label for="email">Campus Email</label>
                 <input type="email" id="email" name="email" required placeholder="your.email@campus.edu">
             </div>
-            
             <div class="form-group">
-                <label for="studentId">Student ID</label>
-                <input type="text" id="studentId" name="studentId" required placeholder="2023814318">
+                <label for="phoneNum">Phone Number</label>
+                <input type="text" id="phoneNum" name="phoneNum" required placeholder="012-3456789">
             </div>
             
             <div class="form-group">
@@ -49,14 +48,14 @@
                 <label for="terms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
             </div>
             
-            <button type="submit" class="auth-button">Register</button>
+            <button type="submit" name="save" class="auth-button">Register</button>
             
             <div class="auth-footer">
                 <p>Already have an account? <a href="login.html">Login here</a></p>
             </div>
         </form>
     </div>
-    
-    <script src="js/auth.js"></script>
+
+   <!-- <script src="js/auth.js"></script> -->
 </body>
 </html>
