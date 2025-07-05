@@ -141,7 +141,7 @@
     
     <main class="container">
         <div class="job-form-container">
-            <form class="job-form" id="jobCreationForm">
+            <form class="job-form" id="jobCreationForm" action="../php/jobdb.php" method="post">
                 <h2>Create New Job Posting</h2>
                 
                 <div class="form-group">
@@ -153,13 +153,17 @@
                     <label for="jobCategory">Category*</label>
                     <select id="jobCategory" name="jobCategory" required>
                         <option value="">Select a category</option>
-                        <option value="design">Design</option>
-                        <option value="tutoring">Tutoring</option>
-                        <option value="photography">Photography</option>
-                        <option value="writing">Writing</option>
-                        <option value="errands">Errands</option>
-                        <option value="tech">Tech Support</option>
-                        <option value="other">Other</option>
+                        <!-- Options should ideally be dynamically loaded from the 'category' table -->
+                        <option value="1">Web Development</option>
+                        <option value="2">Mobile Development</option>
+                        <option value="3">Graphic Design</option>
+                        <option value="4">Writing & Translation</option>
+                        <option value="5">Digital Marketing</option>
+                        <option value="6">Tutoring</option>
+                        <option value="7">Photography</option>
+                        <option value="8">Errands</option>
+                        <option value="9">Tech Support</option>
+                        <option value="10">Other</option>
                     </select>
                 </div>
                 
@@ -194,8 +198,8 @@
                 </div>
                 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Post Job</button>
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='browse.html'">Cancel</button>
+                    <button type="submit" name="postJob" class="btn btn-primary">Post Job</button>
                 </div>
             </form>
         </div>
@@ -206,6 +210,7 @@
     </footer>
     
     <script src="../js/main.js"></script>
+    <script src="../js/admin.js"></script> <!-- Ensure admin.js is loaded for showCustomModal -->
     <script>
         // Skills tagging functionality
         document.getElementById('skillInput').addEventListener('keypress', function(e) {
@@ -232,7 +237,7 @@
             // Create hidden input to store skills
             const input = document.createElement('input');
             input.type = 'hidden';
-            input.name = 'skills[]';
+            input.name = 'skills[]'; // Use array notation for multiple skills
             input.value = skill;
             tag.appendChild(input);
         }

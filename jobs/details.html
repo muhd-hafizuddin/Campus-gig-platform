@@ -156,6 +156,25 @@
             background-color: #d1e7dd;
             color: #0f5132;
         }
+
+        /* Styles for the application modal form */
+        .application-form-modal {
+            padding: 1rem;
+        }
+        .application-form-modal textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-bottom: 1rem;
+        }
+        .application-form-modal .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -228,7 +247,7 @@
                 
                 <div class="action-buttons">
                     <a href="../dashboard.html" class="btn btn-secondary">Back to Listings</a>
-                    <a href="#" class="btn btn-primary">Apply for this Job</a>
+                    <button type="button" id="applyJobButton" class="btn btn-primary">Apply for this Job</button>
                 </div>
             </div>
         </div>
@@ -239,5 +258,60 @@
     </footer>
     
     <script src="../js/main.js"></script>
+    <script src="../js/admin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const applyJobButton = document.getElementById('applyJobButton');
+            if (applyJobButton) {
+                applyJobButton.addEventListener('click', function() {
+                    const applicationFormHtml = `
+                        <form id="applyJobForm" class="application-form-modal">
+                            <label for="applicationMessage">Your Application Message:</label>
+                            <textarea id="applicationMessage" name="applicationMessage" required placeholder="Write a message to the job poster..."></textarea>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Submit Application</button>
+                            </div>
+                        </form>
+                    `;
+                    window.showCustomModal('Apply for Job', applicationFormHtml, 'custom-form');
+
+                    // Re-attach event listener for the form inside the modal
+                    const modalForm = document.getElementById('applyJobForm');
+                    if (modalForm) {
+                        modalForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const message = this.querySelector('textarea').value;
+                            if (message.trim() === '') {
+                                window.showCustomModal('Application Error', 'Please write your application message.', 'alert');
+                                return;
+                            }
+                            
+                            const submitBtn = this.querySelector('button[type="submit"]');
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = 'Applying...';
+                            
+                            setTimeout(() => {
+                                window.showCustomModal('Application Submitted', 'Your application has been submitted successfully!', 'alert');
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Submit Application';
+                                // Close the application modal after submission
+                                const currentModal = document.getElementById('customAdminModal');
+                                if(currentModal) currentModal.remove();
+                                document.body.style.overflow = '';
+                            }, 1500);
+                        });
+
+                        // Add event listener for the cancel button inside the modal form
+                        modalForm.querySelector('.close-modal').addEventListener('click', () => {
+                            const currentModal = document.getElementById('customAdminModal');
+                            if(currentModal) currentModal.remove();
+                            document.body.style.overflow = '';
+                        });
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

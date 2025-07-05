@@ -134,6 +134,7 @@
                 <input type="text" placeholder="Search jobs...">
                 <select>
                     <option value="">All Categories</option>
+                    <!-- Options should ideally be dynamically loaded from the 'category' table -->
                     <option value="design">Design</option>
                     <option value="tutoring">Tutoring</option>
                     <option value="photography">Photography</option>
@@ -149,7 +150,9 @@
             </form>
         </div>
         
-        <div class="job-listings">
+        <div class="job-listings" id="jobListingsContainer">
+            <!-- Job listings would be dynamically loaded here from the database -->
+            <!-- Example static job cards: -->
             <div class="job-card">
                 <h3>Graphic Design for Event Poster</h3>
                 <div class="job-meta">
@@ -199,5 +202,6 @@
     </footer>
     
     <script src="../js/main.js"></script>
+    <script src="../js/admin.js"></script> <!-- Ensure admin.js is loaded for showCustomModal if needed -->
 </body>
 </html>

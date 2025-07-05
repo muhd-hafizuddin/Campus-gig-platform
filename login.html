@@ -17,20 +17,20 @@
             <p>Login to access your dashboard</p>
         </div>
         
-        <form id="loginForm" class="auth-form">
+        <form id="loginForm" name="login" action="customerdb.php" method="post" class="auth-form">
             <div class="form-group">
                 <label for="email">Campus Email</label>
-                <input type="email" id="email" name="email" required placeholder="your.email@campus.edu">
+                <input type="email" name="email" required placeholder="your.email@campus.edu">
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="••••••••">
+                <input type="password" name="password" required placeholder="••••••••">
             </div>
             
             <div class="form-options">
                 <div class="remember-me">
-                    <input type="checkbox" id="remember" name="remember">
+                    <input type="checkbox" name="remember">
                     <label for="remember">Remember me</label>
                 </div>
                 <a href="forgot-password.html" class="forgot-password">Forgot password?</a>

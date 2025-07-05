@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationBtn = document.querySelector('.notification-btn');
     if (notificationBtn) {
         notificationBtn.addEventListener('click', function() {
-            alert('You have new notifications!');
+            // Using custom modal instead of alert
+            window.showCustomModal('Notifications', 'You have new notifications!', 'alert');
             this.querySelector('.badge').style.display = 'none';
         });
     }
@@ -107,13 +108,13 @@ function hideTooltip() {
     }
 }
 
-// Job application handling
+// Job application handling - now triggers a modal
 if (document.getElementById('applyJobForm')) {
     document.getElementById('applyJobForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const message = this.querySelector('textarea').value;
         if (message.trim() === '') {
-            alert('Please write your application message');
+            window.showCustomModal('Application Error', 'Please write your application message.', 'alert');
             return;
         }
         
@@ -123,10 +124,11 @@ if (document.getElementById('applyJobForm')) {
         submitBtn.textContent = 'Applying...';
         
         setTimeout(() => {
-            alert('Application submitted successfully!');
+            window.showCustomModal('Application Submitted', 'Your application has been submitted successfully!', 'alert');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Apply for Job';
-            // Redirect or show success message
+            // Optionally clear form or redirect
+            this.reset();
         }, 1500);
     });
 }

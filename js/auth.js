@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default form submission initially to handle validation
             handleAuthFormSubmit(this, 'login');
         });
     }
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         registerForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default form submission initially to handle validation
             handleAuthFormSubmit(this, 'register');
         });
 
@@ -45,13 +45,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Toggle password visibility
+    // Toggle password visibility (if you add an icon/button for this)
     document.querySelectorAll('.toggle-password').forEach(toggle => {
         toggle.addEventListener('click', function() {
             const input = this.previousElementSibling;
             const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
             input.setAttribute('type', type);
-            this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+            this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️'; // Example icons
         });
     });
 });
@@ -60,47 +60,57 @@ function handleAuthFormSubmit(form, action) {
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     
+    // Basic client-side validation
+    let isValid = true;
+    form.querySelectorAll('[required]').forEach(input => {
+        if (!input.value.trim()) {
+            isValid = false;
+            input.style.borderColor = '#ff6b6b';
+            setTimeout(() => {
+                input.style.borderColor = '';
+            }, 2000);
+        }
+    });
+
+    // Specific validation for registration email (campus email)
+    if (action === 'register') {
+        const emailInput = form.querySelector('#email');
+        if (emailInput && !validateCampusEmail(emailInput.value)) {
+            isValid = false;
+            emailInput.style.borderColor = '#ff6b6b';
+            window.showCustomModal('Validation Error', 'Please use a valid campus email (e.g., @uitm.edu.my or @jombantu.edu.my).', 'alert');
+            setTimeout(() => {
+                emailInput.style.borderColor = '';
+            }, 3000);
+        }
+    }
+    
+    if (!isValid) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        return;
+    }
+    
+    // Disable button and show processing message
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing...';
-    
-    setTimeout(() => {
-        let isValid = true;
-        form.querySelectorAll('[required]').forEach(input => {
-            if (!input.value.trim()) {
-                isValid = false;
-                input.style.borderColor = '#ff6b6b';
-                setTimeout(() => {
-                    input.style.borderColor = '';
-                }, 2000);
-            }
-        });
-        
-        if (!isValid) {
+
+    // For login and registration, let PHP handle the submission and redirection
+    if (action === 'login' || action === 'register') {
+        form.submit(); // Submit the form normally, PHP will handle redirect
+    } else if (action === 'forgot-password') {
+        // For forgot-password, simulate success and use JS redirect (no PHP backend for this yet)
+        setTimeout(() => {
+            window.showCustomModal(
+                'Password Reset',
+                'Password reset link sent to your email!',
+                'alert',
+                () => { window.location.href = 'login.html'; } // Redirect after user closes modal
+            );
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
-            return;
-        }
-        
-        // Simulate successful response
-        submitBtn.textContent = 'Success!';
-        
-        setTimeout(() => {
-            // Redirect based on action
-            switch (action) {
-                case 'login':
-                    window.location.href = 'index.html';
-                    break;
-                case 'register':
-                    alert('Registration successful! Please check your email for verification.');
-                    window.location.href = 'login.html';
-                    break;
-                case 'forgot-password':
-                    alert('Password reset link sent to your email!');
-                    window.location.href = 'login.html';
-                    break;
-            }
-        }, 1000);
-    }, 1500);
+        }, 1500);
+    }
 }
 
 // Campus email validation

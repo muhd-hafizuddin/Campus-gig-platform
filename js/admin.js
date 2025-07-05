@@ -3,6 +3,72 @@
  * Handles admin panel functionality
  */
 
+// Global function for custom alerts/confirmations (to replace native alert/confirm)
+function showCustomModal(title, message, type = 'alert', callback = null) {
+    const modalId = 'customAdminModal'; // Consistent ID for the modal
+    let modal = document.getElementById(modalId);
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'admin-modal';
+        document.body.appendChild(modal);
+    }
+
+    let buttonsHtml = '';
+    if (type === 'confirm') {
+        buttonsHtml = `
+            <button class="btn btn-secondary close-modal">Cancel</button>
+            <button class="btn btn-primary confirm-action">Confirm</button>
+        `;
+    } else if (type === 'custom-form') { // Added for custom forms within the modal
+        buttonsHtml = ''; // Form will have its own buttons
+    }
+    else { // 'alert' type
+        buttonsHtml = `
+            <button class="btn btn-primary close-modal">OK</button>
+        `;
+    }
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">${message}</div>
+            <div class="modal-footer">
+                ${buttonsHtml}
+            </div>
+        </div>
+    `;
+
+    document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+
+    // Add event listeners for closing the modal
+    modal.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.remove();
+            document.body.style.overflow = ''; // Restore scrolling
+            if (type === 'confirm' && callback) {
+                callback(false); // Call callback with false for cancel
+            }
+        });
+    });
+
+    // Add event listener for confirm action if it's a 'confirm' type modal
+    if (type === 'confirm') {
+        modal.querySelector('.confirm-action').addEventListener('click', () => {
+            modal.remove();
+            document.body.style.overflow = ''; // Restore scrolling
+            if (callback) {
+                callback(true); // Call callback with true for confirm
+            }
+        });
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', function() {
     // Data tables functionality
     initDataTables();
@@ -56,8 +122,9 @@ function initReportSystem() {
         if (reviewBtn) {
             reviewBtn.addEventListener('click', function() {
                 const reportTitle = item.querySelector('.report-title').textContent;
-                alert(`Reviewing report: ${reportTitle}`);
-                // In a real app, this would open a modal or redirect
+                // Using custom modal instead of alert
+                showCustomModal('Review Report', `You are reviewing: "${reportTitle}"`, 'alert');
+                // In a real app, this would open a more detailed modal or redirect
             });
         }
     });
@@ -69,21 +136,34 @@ function initUserManagement() {
         btn.addEventListener('click', function() {
             const userId = this.closest('tr').querySelector('td:first-child').textContent;
             const action = this.classList.contains('suspend-btn') ? 'suspend' : 'unsuspend';
-            
-            if (confirm(`Are you sure you want to ${action} user ${userId}?`)) {
-                // Simulate API call
-                this.disabled = true;
-                this.textContent = 'Processing...';
-                
-                setTimeout(() => {
-                    alert(`User ${userId} has been ${action}ed`);
-                    // In a real app, this would update the UI
-                    this.textContent = action === 'suspend' ? 'Unsuspend' : 'Suspend';
-                    this.classList.toggle('suspend-btn');
-                    this.classList.toggle('unsuspend-btn');
-                    this.disabled = false;
-                }, 1000);
-            }
+            const originalText = this.textContent;
+            const currentBtn = this;
+
+            // Using custom modal instead of confirm
+            showCustomModal(
+                `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+                `Are you sure you want to ${action} user ${userId}?`,
+                'confirm',
+                (confirmed) => {
+                    if (confirmed) {
+                        // Simulate API call
+                        currentBtn.disabled = true;
+                        currentBtn.textContent = 'Processing...';
+                        
+                        setTimeout(() => {
+                            showCustomModal('Action Complete', `User ${userId} has been ${action}ed.`, 'alert');
+                            // In a real app, this would update the UI
+                            currentBtn.textContent = action === 'suspend' ? 'Unsuspend' : 'Suspend';
+                            currentBtn.classList.toggle('suspend-btn');
+                            currentBtn.classList.toggle('unsuspend-btn');
+                            currentBtn.disabled = false;
+                        }, 1000);
+                    } else {
+                        currentBtn.disabled = false;
+                        currentBtn.textContent = originalText;
+                    }
+                }
+            );
         });
     });
 }
@@ -94,25 +174,38 @@ function initJobModeration() {
         btn.addEventListener('click', function() {
             const jobId = this.closest('tr').querySelector('td:first-child').textContent;
             const action = this.classList.contains('approve-btn') ? 'approve' : 'reject';
-            
-            if (confirm(`Are you sure you want to ${action} job ${jobId}?`)) {
-                // Simulate API call
-                const row = this.closest('tr');
-                this.disabled = true;
-                this.textContent = 'Processing...';
-                
-                setTimeout(() => {
-                    row.querySelector('.status-badge').textContent = 
-                        action === 'approve' ? 'Active' : 'Rejected';
-                    row.querySelector('.status-badge').className = 
-                        `status-badge status-${action === 'approve' ? 'active' : 'reported'}`;
-                    
-                    // Remove action buttons
-                    row.querySelectorAll('.approve-btn, .reject-btn').forEach(b => b.remove());
-                    
-                    alert(`Job ${jobId} has been ${action}d`);
-                }, 1000);
-            }
+            const row = this.closest('tr');
+            const currentBtn = this;
+            const originalText = this.textContent;
+
+            // Using custom modal instead of confirm
+            showCustomModal(
+                `${action.charAt(0).toUpperCase() + action.slice(1)} Job`,
+                `Are you sure you want to ${action} job ${jobId}?`,
+                'confirm',
+                (confirmed) => {
+                    if (confirmed) {
+                        // Simulate API call
+                        currentBtn.disabled = true;
+                        currentBtn.textContent = 'Processing...';
+                        
+                        setTimeout(() => {
+                            row.querySelector('.status-badge').textContent = 
+                                action === 'approve' ? 'Active' : 'Rejected';
+                            row.querySelector('.status-badge').className = 
+                                `status-badge status-${action === 'approve' ? 'active' : 'reported'}`;
+                            
+                            // Remove action buttons
+                            row.querySelectorAll('.approve-btn, .reject-btn').forEach(b => b.remove());
+                            
+                            showCustomModal('Action Complete', `Job ${jobId} has been ${action}d.`, 'alert');
+                        }, 1000);
+                    } else {
+                        currentBtn.disabled = false;
+                        currentBtn.textContent = originalText;
+                    }
+                }
+            );
         });
     });
 }
@@ -132,39 +225,5 @@ function initDashboardWidgets() {
     }, 500);
 }
 
-// Modal system for admin actions
-function openModal(title, content) {
-    const modal = document.createElement('div');
-    modal.className = 'admin-modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>${title}</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">${content}</div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary close-modal">Cancel</button>
-                <button class="btn btn-primary confirm-action">Confirm</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
-    
-    // Add event listeners
-    modal.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', () => closeModal(modal));
-    });
-    
-    modal.querySelector('.confirm-action').addEventListener('click', () => {
-        alert('Action confirmed!');
-        closeModal(modal);
-    });
-}
-
-function closeModal(modal) {
-    modal.remove();
-    document.body.style.overflow = '';
-}
+// Making showCustomModal globally accessible for other scripts
+window.showCustomModal = showCustomModal;

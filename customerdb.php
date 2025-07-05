@@ -10,53 +10,64 @@
     {
         die("Connection failed:" .mysqli_connect_error());
     }
-    //register user
-    if(isset($_POST['register']))//name of submit button
+
+    // Register user
+    if(isset($_POST['register'])) // name of submit button
     {
         $Name = $_POST['fullName'];
         $Email = $_POST['email'];
-        $Password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        $Password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hash the password
         $Phone = $_POST['phoneNum'];
-        $Profile = 'images/profile.jpg';
-        $isActive = 'active';
+        $Profile = 'images/profile.jpg'; // Default profile picture
+        $isActive = 'active'; // Default status
 
         $sql_query = "INSERT INTO user (name, email, password_hash, phone_number, profile_picture_url, is_active, created_at, updated_at) 
         VALUES ('$Name', '$Email', '$Password', '$Phone' ,'$Profile', '$isActive', NOW(), NOW())";
-        //running query
+        
         if(mysqli_query($conn, $sql_query))
         {
-            echo "Data inserted successfully";
+            // Registration successful, redirect to login page
+            header("Location: login.html?registration=success");
+            exit; // Important to exit after header redirect
         }
         else
         {
-            echo "Error:" . $sql_query."". mysqli_error($conn);
+            // Registration failed, redirect back to register with an error or show error
+            // For a simple app, we can redirect back or just echo an error
+            echo "Error: " . $sql_query . "<br>" . mysqli_error($conn);
         }
         mysqli_close($conn);
     }
-    //login user
-    elseif(isset($_POST['login']))//name of login form
+
+    // Login user
+    elseif(isset($_POST['login'])) // name of login form submit button
     {
         $email = $_POST['email'];
         $password = $_POST['password'];
 
-        $sql_query = "SELECT * FROM user";
-        $result = mysqli_query($conn, $sql_query);
-        $loginSuccess = false;
+        // Prepare and execute statement to prevent SQL injection
+        $stmt = $conn->prepare("SELECT user_id, password_hash FROM user WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-        while($row = mysqli_fetch_assoc($result)){
-            if ($row['email'] === $email && $row['password'] === $password) {
-                $loginSuccess = true;
-                break;
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            // Verify password hash
+            if (password_verify($password, $row['password_hash'])) {
+                // Login successful, redirect to index page
+                // In a real app, you would start a session here (e.g., $_SESSION['user_id'] = $row['user_id'];)
+                header("Location: index.html?login=success");
+                exit; // Important to exit after header redirect
+            } else {
+                // Password does not match
+                echo "Invalid email or password.";
             }
+        } else {
+            // No user found with that email
+            echo "Invalid email or password.";
         }
-        if ($loginSuccess) {
-            echo "Login Successful Cuk";
-            header("Location: index.html");
-            exit;
-        }
-        else {
-            echo "tak berjaya la cuba lagi plis";
-        }
+        $stmt->close();
+        mysqli_close($conn);
     }
-    ?>
-    
+?>
