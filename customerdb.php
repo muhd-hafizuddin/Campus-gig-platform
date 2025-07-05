@@ -10,7 +10,8 @@
     {
         die("Connection failed:" .mysqli_connect_error());
     }
-    if(isset($_POST['save']))//name of submit button
+    //register user
+    if(isset($_POST['register']))//name of submit button
     {
         $Name = $_POST['fullName'];
         $Email = $_POST['email'];
@@ -32,5 +33,30 @@
         }
         mysqli_close($conn);
     }
+    //login user
+    elseif(isset($_POST['login']))//name of login form
+    {
+        $email = $_POST['email'];
+        $password = $_POST['password'];
 
+        $sql_query = "SELECT * FROM user";
+        $result = mysqli_query($conn, $sql_query);
+        $loginSuccess = false;
+
+        while($row = mysqli_fetch_assoc($result)){
+            if ($row['email'] === $email && $row['password'] === $password) {
+                $loginSuccess = true;
+                break;
+            }
+        }
+        if ($loginSuccess) {
+            echo "Login Successful Cuk";
+            header("Location: index.html");
+            exit;
+        }
+        else {
+            echo "tak berjaya la cuba lagi plis";
+        }
+    }
+    ?>
     

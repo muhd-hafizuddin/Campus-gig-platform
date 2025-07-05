@@ -88,7 +88,7 @@ function handleAuthFormSubmit(form, action) {
             // Redirect based on action
             switch (action) {
                 case 'login':
-                    window.location.href = 'dashboard.html';
+                    window.location.href = 'index.html';
                     break;
                 case 'register':
                     alert('Registration successful! Please check your email for verification.');
