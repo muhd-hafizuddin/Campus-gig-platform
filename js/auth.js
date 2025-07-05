@@ -1,121 +1,91 @@
 /**
- * JomBantu - Authentication JavaScript
- * Handles login, registration, and password recovery
+ * JomBantu - Authentication JavaScript (Visual Enhancements Only)
+ * PHP handles all validation and business logic
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Login form handling
+    // Login form visual enhancements
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent default form submission initially to handle validation
-            handleAuthFormSubmit(this, 'login');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
+            // Visual feedback only
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            
+            // Let PHP handle everything else - don't prevent submission
         });
     }
 
-    // Registration form handling
+    // Registration form visual enhancements
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         registerForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent default form submission initially to handle validation
-            handleAuthFormSubmit(this, 'register');
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
+            // Visual feedback only
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating account...';
+            
+            // Let PHP handle everything else - don't prevent submission
         });
 
-        // Password confirmation validation
+        // Real-time password matching (visual feedback only)
         const password = document.getElementById('password');
         const confirmPassword = document.getElementById('confirmPassword');
         
         if (password && confirmPassword) {
             confirmPassword.addEventListener('input', function() {
                 if (this.value !== password.value) {
-                    this.setCustomValidity('Passwords do not match');
+                    this.style.borderColor = '#ff6b6b';
+                    this.title = 'Passwords do not match';
                 } else {
-                    this.setCustomValidity('');
+                    this.style.borderColor = '#4caf50';
+                    this.title = 'Passwords match';
                 }
             });
         }
     }
 
-    // Forgot password form handling
-    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-    if (forgotPasswordForm) {
-        forgotPasswordForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            handleAuthFormSubmit(this, 'forgot-password');
+    // Add visual feedback to form inputs
+    document.querySelectorAll('input[required]').forEach(input => {
+        input.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                this.style.borderColor = '#ff6b6b';
+            } else {
+                this.style.borderColor = '#4caf50';
+            }
         });
-    }
 
-    // Toggle password visibility (if you add an icon/button for this)
+        input.addEventListener('focus', function() {
+            this.style.borderColor = '#007bff';
+        });
+    });
+
+    // Toggle password visibility (optional feature)
     document.querySelectorAll('.toggle-password').forEach(toggle => {
         toggle.addEventListener('click', function() {
             const input = this.previousElementSibling;
             const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
             input.setAttribute('type', type);
-            this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️'; // Example icons
+            this.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
         });
     });
 });
 
-function handleAuthFormSubmit(form, action) {
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    // Basic client-side validation
-    let isValid = true;
-    form.querySelectorAll('[required]').forEach(input => {
-        if (!input.value.trim()) {
-            isValid = false;
-            input.style.borderColor = '#ff6b6b';
-            setTimeout(() => {
-                input.style.borderColor = '';
-            }, 2000);
-        }
-    });
-
-    // Specific validation for registration email (campus email)
-    if (action === 'register') {
-        const emailInput = form.querySelector('#email');
-        if (emailInput && !validateCampusEmail(emailInput.value)) {
-            isValid = false;
-            emailInput.style.borderColor = '#ff6b6b';
-            window.showCustomModal('Validation Error', 'Please use a valid campus email (e.g., @uitm.edu.my or @jombantu.edu.my).', 'alert');
-            setTimeout(() => {
-                emailInput.style.borderColor = '';
-            }, 3000);
-        }
-    }
-    
-    if (!isValid) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        return;
-    }
-    
-    // Disable button and show processing message
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing...';
-
-    // For login and registration, let PHP handle the submission and redirection
-    if (action === 'login' || action === 'register') {
-        form.submit(); // Submit the form normally, PHP will handle redirect
-    } else if (action === 'forgot-password') {
-        // For forgot-password, simulate success and use JS redirect (no PHP backend for this yet)
-        setTimeout(() => {
-            window.showCustomModal(
-                'Password Reset',
-                'Password reset link sent to your email!',
-                'alert',
-                () => { window.location.href = 'login.html'; } // Redirect after user closes modal
-            );
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
-        }, 1500);
-    }
+// Optional: Add loading animation
+function showLoadingAnimation() {
+    // Add spinner or loading animation to the page
+    const loader = document.createElement('div');
+    loader.id = 'pageLoader';
+    loader.innerHTML = '<div class="spinner"></div>';
+    document.body.appendChild(loader);
 }
 
-// Campus email validation
-function validateCampusEmail(email) {
-    // This should be updated with your actual campus email pattern
-    const campusEmailPattern = /@(student\.)?(uitm|jombantu)\.edu\.my$/i;
-    return campusEmailPattern.test(email);
+function hideLoadingAnimation() {
+    const loader = document.getElementById('pageLoader');
+    if (loader) {
+        loader.remove();
+    }
 }
