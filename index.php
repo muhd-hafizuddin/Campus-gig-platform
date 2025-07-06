@@ -11,36 +11,13 @@ session_start();
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <a href="index.php" class="logo">
-            <img src="images/logo.png" alt="JomBantu Logo">
-            <span>JomBantu</span>
-        </a>
-        <nav>
-            <ul>
-                <li><a href="index.php">Home</a></li>
-                <li><a href="jobs/browse.php">Browse Jobs</a></li>
-                <li><a href="how-it-works.html">How It Works</a></li>
-                <li><a href="about.html">About Us</a></li>
-            </ul>
-        </nav>
-        <div class="auth-buttons">
-            <?php if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true): ?>
-                <span>Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>!</span>
-                <a href="profile.php" class="profile-btn">My Profile</a>
-                <a href="logout.php" class="logout-btn">Logout</a>
-            <?php else: ?>
-                <a href="login.html" class="login-btn">Login</a>
-                <a href="register.html" class="register-btn">Register</a>
-            <?php endif; ?>
-        </div>
-    </header>
+    <?php include 'header.php'; ?>
     
     <section class="hero">
         <h1>Connect, Collaborate, Earn on Campus</h1>
         <p>JomBantu is your campus gig platform connecting students who need help with those who can provide services.</p>
         <div class="cta-buttons">
-            <a href="register.html" class="cta-button">Get Started</a>
+            <a href="register.php" class="cta-button">Get Started</a>
             <a href="jobs/browse.php" class="cta-button secondary">Browse Jobs</a>
         </div>
     </section>

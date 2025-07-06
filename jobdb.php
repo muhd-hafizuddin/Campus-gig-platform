@@ -63,19 +63,14 @@ if (isset($_POST['postJob'])) {
     $description = mysqli_real_escape_string($conn, $_POST['jobDescription']);
     $budget = mysqli_real_escape_string($conn, $_POST['jobBudget']);
     $deadline = mysqli_real_escape_string($conn, $_POST['jobDeadline']);
-    $location = mysqli_real_escape_string($conn, $_POST['jobLocation']);
     
     // Get user_id from session
     $user_id = $_SESSION['id']; 
     $status = 'pending'; // Default status for new jobs
 
-    // Handle skills (if any)
-    $skills_array = isset($_POST['skills']) ? $_POST['skills'] : [];
-    $skills_json = json_encode($skills_array); // Store skills as JSON string
-
     // SQL query to insert job data
-    $sql_query = "INSERT INTO job (user_id, category_id, title, description, budget, status, deadline, location, skills, created_at, updated_at) 
-                  VALUES ('$user_id', '$category_id', '$title', '$description', '$budget', '$status', '$deadline', '$location', '$skills_json', NOW(), NOW())";
+    $sql_query = "INSERT INTO job (user_id, category_id, title, description, budget, status, deadline, created_at, updated_at) 
+                  VALUES ('$user_id', '$category_id', '$title', '$description', '$budget', '$status', '$deadline', NOW(), NOW())";
 
     if (mysqli_query($conn, $sql_query)) {
         // Redirect to a success page or browse jobs page

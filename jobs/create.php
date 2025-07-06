@@ -1,6 +1,6 @@
 <?php
 // 1. REQUIRE THE DATABASE CONNECTION AND SESSION START
-require_once 'customerdb.php';
+require_once '../customerdb.php';
 
 // 2. AUTHENTICATION CHECK
 // If 'loggedin' is not set in the session or is not true, redirect to login page.
@@ -39,12 +39,15 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 </head>
 <body>
     <!-- It's best practice to use a reusable header file -->
-    <?php include 'header.php'; ?>
+    <?php 
+    $is_subdirectory = true;
+    include '../header.php'; 
+    ?>
 
     <main class="container">
         <div class="job-form-container">
             <!-- Make sure your form action points to the correct handler script -->
-            <form class="job-form" id="jobCreationForm" action="jobdb.php" method="post">
+            <form class="job-form" id="jobCreationForm" action="../customerdb.php" method="post">
                 <h2>Create New Job Posting</h2>
                 
                 <!-- All your form groups from create.html go here -->
@@ -56,6 +59,21 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
                 <div class="form-group">
                     <label for="jobDescription">Job Description*</label>
                     <textarea id="jobDescription" name="jobDescription" required placeholder="Describe the job in detail..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="jobCategory">Category*</label>
+                        <select id="jobCategory" name="jobCategory" required>
+                            <option value="">Select a category</option>
+                            <?php
+                            $categories = getCategories($conn);
+                            foreach($categories as $category) {
+                                echo '<option value="' . htmlspecialchars($category['category_id']) . '">' . htmlspecialchars($category['name']) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-row">

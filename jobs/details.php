@@ -1,24 +1,13 @@
 <?php
 // Start the session and include the database connection.
-require_once 'customerdb.php';
+require_once '../customerdb.php';
 
-// You can add PHP logic here to fetch job details from the database using $_GET['id']
-$job_id = $_GET['id'] ?? null; // Get job ID from URL
+// Get job ID from URL and fetch job details
+$job_id = $_GET['id'] ?? null;
 
 $job = null;
 if ($job_id) {
-    $jobSql = "SELECT j.*, u.name as poster_name, u.email as poster_email
-               FROM job j
-               JOIN user u ON j.user_id = u.user_id
-               WHERE j.job_id = ?";
-    $stmt = mysqli_prepare($conn, $jobSql);
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "i", $job_id);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        $job = mysqli_fetch_assoc($result);
-        mysqli_stmt_close($stmt);
-    }
+    $job = getJobById($conn, $job_id);
 }
 
 // Handle case where job is not found
@@ -103,13 +92,16 @@ if (!$job) {
 </head>
 <body>
 
-    <?php include 'header.php'; // This line replaces your entire old <header> section ?>
+    <?php 
+    $is_subdirectory = true;
+    include '../header.php'; // This line replaces your entire old <header> section 
+    ?>
 
     <main class="container">
         <div class="job-details-container">
             <div class="job-header">
                 <h1><?php echo htmlspecialchars($job['title']); ?></h1>
-                <p>Posted by: <?php echo htmlspecialchars($job['poster_name']); ?> (<?php echo htmlspecialchars($job['poster_email']); ?>)</p>
+                <p>Posted by: <?php echo htmlspecialchars($job['poster_name']); ?></p>
                 <p>Posted on: <?php echo date('d M Y', strtotime($job['created_at'])); ?></p>
             </div>
             <div class="job-content">
@@ -125,26 +117,60 @@ if (!$job) {
                         <strong>Deadline:</strong> <?php echo date('d M Y', strtotime($job['deadline'])); ?>
                     </div>
                     <div class="job-info-item">
-                        <strong>Location:</strong> <?php echo htmlspecialchars($job['location']); ?>
-                    </div>
-                    <div class="job-info-item">
-                        <strong>Category:</strong> <?php // Fetch category name from category_id if available
-                            echo htmlspecialchars($job['category_id']); // Placeholder
-                        ?>
-                    </div>
-                    <div class="job-info-item">
-                        <strong>Required Skills:</strong> <?php
-                            $skills = json_decode($job['skills'], true);
-                            echo htmlspecialchars(implode(', ', $skills));
-                        ?>
+                        <strong>Category:</strong> <?php echo htmlspecialchars($job['category_name']); ?>
                     </div>
                 </div>
 
+                <!-- Applications List -->
+                <h2>Applications</h2>
+                <?php
+                $applications = [];
+                if ($job_id) {
+                    $sql = "SELECT a.user_id, u.name, u.profile_picture_url FROM application a JOIN user u ON a.user_id = u.user_id WHERE a.job_id = ? ORDER BY a.applied_at ASC";
+                    $stmt = mysqli_prepare($conn, $sql);
+                    if ($stmt) {
+                        mysqli_stmt_bind_param($stmt, "i", $job_id);
+                        mysqli_stmt_execute($stmt);
+                        $result = mysqli_stmt_get_result($stmt);
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $applications[] = $row;
+                        }
+                        mysqli_stmt_close($stmt);
+                    }
+                }
+                if (!empty($applications)) {
+                    echo '<ul style="list-style:none;padding:0;">';
+                    foreach ($applications as $app) {
+                        $pic = $app['profile_picture_url'] ? '../' . htmlspecialchars($app['profile_picture_url']) : '../images/default-avatar.png';
+                        // Get applicant's average rating as job taker
+                        $app_rating = getUserAverageRating($conn, $app['user_id'], 'poster_to_worker');
+                        $stars = str_repeat('★', floor($app_rating)) . str_repeat('☆', 5-floor($app_rating));
+                        echo '<li style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+                        echo '<img src="' . $pic . '" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">';
+                        echo '<a href="../profile.php?id=' . $app['user_id'] . '" style="font-weight:bold;">' . htmlspecialchars($app['name']) . '</a>';
+                        echo '<span style="color:#f39c12;margin-left:6px;">' . $stars . '</span> <span style="font-size:0.95em;">(' . $app_rating . ')</span>';
+                        // Accept/Reject buttons for poster
+                        if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true && $_SESSION['id'] == $job['user_id']) {
+                            echo '<form method="post" action="" style="display:inline;margin-left:10px;">';
+                            echo '<input type="hidden" name="job_id" value="' . $job_id . '"><input type="hidden" name="applicant_id" value="' . $app['user_id'] . '">';
+                            echo '<button type="submit" name="accept_applicant" class="btn btn-primary" style="padding:2px 8px;font-size:0.95em;">Accept</button> ';
+                            echo '<button type="submit" name="reject_applicant" class="btn btn-secondary" style="padding:2px 8px;font-size:0.95em;">Reject</button>';
+                            echo '</form>';
+                        }
+                        echo '</li>';
+                    }
+                    echo '</ul>';
+                } else {
+                    echo '<p>No applications yet.</p>';
+                }
+                ?>
+                <!-- End Applications List -->
+
                 <div class="action-buttons">
                     <a href="browse.php" class="btn btn-secondary">Back to Listings</a>
-                    <?php if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true): ?>
+                    <?php if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true && $_SESSION['id'] != $job['user_id']): ?>
                         <button type="button" id="applyJobButton" class="btn btn-primary">Apply for this Job</button>
-                    <?php else: ?>
+                    <?php elseif (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true): ?>
                         <a href="../login.html" class="btn btn-primary">Login to Apply</a>
                     <?php endif; ?>
                 </div>
@@ -161,12 +187,8 @@ if (!$job) {
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>Apply for Job: <?php echo htmlspecialchars($job['title']); ?></h2>
-            <form id="applicationForm" action="../jobdb.php" method="post">
+            <form id="applicationForm" action="../customerdb.php" method="post">
                 <input type="hidden" name="jobId" value="<?php echo htmlspecialchars($job['job_id']); ?>">
-                <div class="form-group">
-                    <label for="applicationMessage">Your Message/Cover Letter:</label>
-                    <textarea id="applicationMessage" name="applicationMessage" rows="5" required placeholder="Tell the job poster why you're a good fit..."></textarea>
-                </div>
                 <button type="submit" name="applyJob" class="btn btn-primary">Submit Application</button>
             </form>
         </div>
