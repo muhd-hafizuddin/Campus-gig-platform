@@ -55,21 +55,26 @@ $conn = mysqli_connect($servername, $username, $password, $dbname);
 // Immediately stop if the connection fails
 if (!$conn) {
     error_log("Database Connection Failed: " . mysqli_connect_error());
-    showMessageBox('A database connection error occurred. Please try again later.', 'index.html');
+    showMessageBox('A database connection error occurred. Please try again later.', 'index.php');
 }
 
 // --- 2. Registration Logic ---
 if (isset($_POST['register'])) {
-    error_log("DEBUG: Register form submitted.");
-    showMessageBox('DEBUG: Register form submitted.'); // Debugging output
 
     $name = $_POST['fullName'];
     $email = $_POST['email'];
     $password = $_POST['password'];
+    $confirmPass = $_POST['confirmPassword'];
     $phone = $_POST['phoneNum'];
 
-    if ($_POST['password'] !== $_POST['confirmPassword']) {
+    if ($password !== $confirmPass) {
         showMessageBox('Passwords do not match!', 'register.html');
+    }
+
+    // Validate email format
+    // This regex checks for 'anything'@student.uitm.edu.my
+    if (!preg_match('/^[a-zA-Z0-9._%+-]+@student\.uitm\.edu\.my$/', $email)) {
+        showMessageBox('Invalid email format. Email must be in the format \'name\'@student.uitm.edu.my', 'register.html');
     }
 
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -117,9 +122,6 @@ if (isset($_POST['register'])) {
 
 // --- 3. Login Logic ---
 if (isset($_POST['login'])) {
-    error_log("DEBUG: Login form submitted.");
-    showMessageBox('DEBUG: Login form submitted. Email: ' . htmlspecialchars($_POST['email']), ''); // Debugging output
-
     $email = $_POST['email'];
     $password = $_POST['password'];
 
@@ -134,16 +136,13 @@ if (isset($_POST['login'])) {
     $result = mysqli_stmt_get_result($stmt);
 
     if ($user = mysqli_fetch_assoc($result)) {
-        error_log("DEBUG: User found in DB for email: " . $email);
-        showMessageBox('DEBUG: User found. Verifying password...', ''); // Debugging output
-
         if (password_verify($password, $user['password_hash'])) {
             // --- SUCCESS ---
             $_SESSION['loggedin'] = true;
             $_SESSION['id'] = $user['user_id'];
             $_SESSION['name'] = $user['name'];
             error_log("DEBUG: Login successful for user: " . $user['name']);
-            header("Location: index.html"); // Redirect to index.html as it's now static
+            header("Location: index.php"); // Redirect to index.php as it's now static
             exit();
         } else {
             // Password mismatch
@@ -160,5 +159,9 @@ if (isset($_POST['login'])) {
     mysqli_close($conn);
     exit();
 }
+
+// Removed the conditional mysqli_close($conn); from here
+// The connection will now remain open for scripts that include customerdb.php
+// and handle their own closing or rely on script termination.
 
 ?>

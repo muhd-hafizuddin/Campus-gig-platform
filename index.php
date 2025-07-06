@@ -19,7 +19,7 @@ session_start();
         <nav>
             <ul>
                 <li><a href="index.php">Home</a></li>
-                <li><a href="jobs/browse.html">Browse Jobs</a></li>
+                <li><a href="jobs/browse.php">Browse Jobs</a></li>
                 <li><a href="how-it-works.html">How It Works</a></li>
                 <li><a href="about.html">About Us</a></li>
             </ul>
@@ -27,6 +27,7 @@ session_start();
         <div class="auth-buttons">
             <?php if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true): ?>
                 <span>Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>!</span>
+                <a href="profile.php" class="profile-btn">My Profile</a>
                 <a href="logout.php" class="logout-btn">Logout</a>
             <?php else: ?>
                 <a href="login.html" class="login-btn">Login</a>
@@ -40,7 +41,7 @@ session_start();
         <p>JomBantu is your campus gig platform connecting students who need help with those who can provide services.</p>
         <div class="cta-buttons">
             <a href="register.html" class="cta-button">Get Started</a>
-            <a href="jobs/browse.html" class="cta-button secondary">Browse Jobs</a>
+            <a href="jobs/browse.php" class="cta-button secondary">Browse Jobs</a>
         </div>
     </section>
     
