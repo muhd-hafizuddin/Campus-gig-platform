@@ -10,13 +10,19 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
-// 3. GET USER ID FROM SESSION
-// We will use this ID to fetch all the relevant data.
-$userId = $_SESSION['id'];
+// 3. GET USER ID FROM URL OR SESSION
+if (isset($_GET['id'])) {
+    $userId = intval($_GET['id']);
+} else {
+    $userId = $_SESSION['id'];
+}
+
+// After determining $userId, add:
+$isOwner = ($userId == $_SESSION['id']);
 
 // 4. FETCH USER'S PROFILE DATA
 // Prepare a statement to prevent SQL injection.
-$userSql = "SELECT name, email, phone_number, profile_picture_url, created_at FROM user WHERE user_id = ?";
+$userSql = "SELECT name, email, phone_number, profile_picture_url, created_at, rating_as_poster, rating_as_job_taker FROM user WHERE user_id = ?";
 $userStmt = mysqli_prepare($conn, $userSql);
 mysqli_stmt_bind_param($userStmt, "i", $userId);
 mysqli_stmt_execute($userStmt);
@@ -39,7 +45,7 @@ $avgRating = $ratingData['avg_rating'] ? round($ratingData['avg_rating'], 1) : 0
 $reviewCount = $ratingData['review_count'];
 
 // 6. FETCH ALL REVIEWS FOR THE USER
-$reviewsSql = "SELECT r.rating, r.comment, r.created_at, u.name as reviewer_name 
+$reviewsSql = "SELECT r.rating, r.comment, r.created_at, u.name as reviewer_name, r.review_type 
                FROM review r 
                JOIN user u ON r.reviewer_id = u.user_id 
                WHERE r.reviewee_id = ? 
@@ -49,10 +55,40 @@ mysqli_stmt_bind_param($reviewsStmt, "i", $userId);
 mysqli_stmt_execute($reviewsStmt);
 $reviewsResult = mysqli_stmt_get_result($reviewsStmt);
 
-$posterRating = getUserAverageRating($conn, $userId, 'worker_to_poster');
-$takerRating = getUserAverageRating($conn, $userId, 'poster_to_worker');
-$posterReviewCount = getUserReviewCount($conn, $userId, 'worker_to_poster');
-$takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
+$posterRating = getUserAverageRating($conn, $userId, 'freelancer_to_employer');
+$takerRating = getUserAverageRating($conn, $userId, 'employer_to_freelancer');
+$posterReviewCount = getUserReviewCount($conn, $userId, 'freelancer_to_employer');
+$takerReviewCount = getUserReviewCount($conn, $userId, 'employer_to_freelancer');
+
+// At the top of profile.php, handle mark_notifs_read POST
+if (isset($_GET['mark_notifs_read'])) {
+    if (isset($_SESSION['id'])) {
+        $userId = $_SESSION['id'];
+        $sql = "UPDATE notification SET is_read = 1 WHERE user_id = ? AND is_read = 0";
+        $stmt = mysqli_prepare($conn, $sql);
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $userId);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    }
+    exit;
+}
+
+// Handle job deletion from profile page
+if (isset($_POST['delete_job']) && isset($_POST['job_id'])) {
+    if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+        $job_id = intval($_POST['job_id']);
+        // Only allow deletion if the job belongs to the logged-in user
+        $job = getJobById($conn, $job_id);
+        if ($job && $job['user_id'] == $_SESSION['id']) {
+            softDeleteJob($conn, $job_id, 'cancelled');
+        }
+    }
+    // Refresh to update the job list
+    header('Location: profile.php');
+    exit();
+}
 
 ?>
 <!DOCTYPE html>
@@ -116,6 +152,9 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                 <img src="<?php echo htmlspecialchars($user['profile_picture_url'] ?? 'images/default-avatar.png'); ?>" alt="Profile Avatar" class="profile-avatar">
                 <div class="profile-header-info">
                     <h1><?php echo htmlspecialchars($user['name']); ?></h1>
+                    <?php if ($isOwner): ?>
+                        <span style="background:#007bff;color:#fff;padding:2px 10px;border-radius:12px;font-size:0.9em;margin-left:10px;vertical-align:middle;">You</span>
+                    <?php endif; ?>
                     <p>Member since <?php echo date('F Y', strtotime($user['created_at'])); ?></p>
                     <div class="profile-stats">
                         <span class="stat-item"><span class="star">★</span> <?php echo $posterRating; ?> average rating as poster (<?php echo $posterReviewCount; ?> reviews)</span>
@@ -125,6 +164,11 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                         <?php if ($takerReviewCount == 0) echo '<span style="color:#888;">This user has not received any reviews as a job taker yet.</span>'; ?>
                     </div>
                 </div>
+                <?php if ($isOwner): ?>
+                    <div style="text-align:right; margin: 1rem 0 2rem 0;">
+                        <a href="edit-profile.php" class="btn btn-secondary" style="background:#28a745;color:#fff;padding:8px 18px;border-radius:6px;">Edit Profile</a>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <div class="profile-content">
@@ -140,15 +184,17 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                             <?php echo htmlspecialchars($user['phone_number'] ?? 'Not provided'); ?>
                         </li>
                     </ul>
-                    <div style="margin-top: 2rem;">
-                        <a href="jobs/create.php" class="btn btn-primary" style="display: block; text-align: center; padding: 0.8rem; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Post New Job</a>
-                    </div>
+                    <?php if ($isOwner): ?>
+                        <div style="margin-top: 2rem;">
+                            <a href="jobs/create.php" class="btn btn-primary" style="display: block; text-align: center; padding: 0.8rem; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Post New Job</a>
+                        </div>
+                    <?php endif; ?>
                 </aside>
 
                 <div class="profile-main-content">
                     <!-- My Posted Jobs Section -->
                     <section class="jobs-section">
-                        <h2>My Posted Jobs</h2>
+                        <h2><?php echo $isOwner ? 'My Posted Jobs' : 'Jobs Posted by this User'; ?></h2>
                         <?php
                         $userJobs = getUserJobs($conn, $userId);
                         if (!empty($userJobs)):
@@ -161,16 +207,23 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                                         <p class="job-budget">Budget: RM <?php echo htmlspecialchars($job['budget']); ?></p>
                                         <p class="job-status">Status: <span class="status-<?php echo $job['status']; ?>"><?php echo ucfirst($job['status']); ?></span></p>
                                         <p class="job-applications"><?php echo $job['application_count']; ?> applications</p>
-                                        <a href="jobs/details.php?id=<?php echo $job['job_id']; ?>" class="view-job-btn">View Details</a>
+                                        <a href="/GigPlatform/jobs/details.php?id=<?php echo $job['job_id']; ?>" class="view-job-btn">View Details</a>
+                                        <?php if ($isOwner): ?>
+                                            <form method="post" action="" onsubmit="return confirm('Are you sure you want to delete this job? This cannot be undone.');" style="margin-top:10px;">
+                                                <input type="hidden" name="job_id" value="<?php echo $job['job_id']; ?>">
+                                                <button type="submit" name="delete_job" class="btn btn-danger" style="background:#dc3545;color:white;">Delete</button>
+                                            </form>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
                         <?php else: ?>
-                            <p>You haven't posted any jobs yet. <a href="jobs/create.php">Post your first job!</a></p>
+                            <p><?php echo $isOwner ? "You haven't posted any jobs yet. <a href='jobs/create.php'>Post your first job!</a>" : "This user hasn't posted any jobs yet."; ?></p>
                         <?php endif; ?>
                     </section>
 
                     <!-- My Applications Section -->
+                    <?php if ($isOwner): ?>
                     <section class="applications-section">
                         <h2>My Applications</h2>
                         <?php
@@ -184,8 +237,14 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                                         <p class="app-poster">Posted by: <?php echo htmlspecialchars($app['poster_name']); ?></p>
                                         <p class="app-budget">Budget: RM <?php echo htmlspecialchars($app['budget']); ?></p>
                                         <p class="app-status">Status: <span class="status-<?php echo $app['status']; ?>"><?php echo ucfirst($app['status']); ?></span></p>
+                                        <?php if ($app['status'] === 'pending'): ?>
+                                            <form method="post" action="../customerdb.php" style="margin-top:8px;">
+                                                <input type="hidden" name="job_id" value="<?php echo $app['job_id']; ?>">
+                                                <button type="submit" name="withdraw_application" class="btn btn-warning" style="background:#ffc107;color:#333;">Withdraw</button>
+                                            </form>
+                                        <?php endif; ?>
                                         <p class="app-date">Applied: <?php echo date('M j, Y', strtotime($app['applied_at'])); ?></p>
-                                        <a href="jobs/details.php?id=<?php echo $app['job_id']; ?>" class="view-job-btn">View Job</a>
+                                        <a href="/GigPlatform/jobs/details.php?id=<?php echo $app['job_id']; ?>" class="view-job-btn">View Job</a>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -193,6 +252,7 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                             <p>You haven't applied to any jobs yet. <a href="jobs/browse.php">Browse available jobs!</a></p>
                         <?php endif; ?>
                     </section>
+                    <?php endif; ?>
 
                     <!-- Reviews Section -->
                     <section class="reviews-section">
@@ -205,9 +265,18 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                                         <div class="review-rating">
                                             <?php echo str_repeat('★', round($review['rating'])); ?><?php echo str_repeat('☆', 5 - round($review['rating'])); ?>
                                             (<?php echo htmlspecialchars($review['rating']); ?>)
+                                            <span style="font-size:0.95em;color:#888;margin-left:8px;">
+                                                <?php
+                                                if ($review['review_type'] === 'employer_to_freelancer') echo 'Employer → Freelancer';
+                                                elseif ($review['review_type'] === 'freelancer_to_employer') echo 'Freelancer → Employer';
+                                                else echo htmlspecialchars($review['review_type']);
+                                                ?>
+                                            </span>
                                         </div>
                                     </div>
-                                    <p class="review-comment"><?php echo htmlspecialchars($review['comment']); ?></p>
+                                    <?php if (!empty($review['comment'])): ?>
+                                        <p class="review-comment"><?php echo nl2br(htmlspecialchars($review['comment'])); ?></p>
+                                    <?php endif; ?>
                                     <p class="review-date"><?php echo date('d M Y', strtotime($review['created_at'])); ?></p>
                                 </div>
                             <?php endwhile; ?>
@@ -226,11 +295,21 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
     <?php // include 'footer.php'; ?>
 
     <?php if (isset($_SESSION['show_notification_modal']) && !empty($_SESSION['show_notification_modal'])): ?>
+    <?php
+    // Only show unique notifications per job/message
+    $uniqueNotifs = [];
+    foreach ($_SESSION['show_notification_modal'] as $notif) {
+        $key = md5($notif['message']);
+        if (!isset($uniqueNotifs[$key])) {
+            $uniqueNotifs[$key] = $notif;
+        }
+    }
+    ?>
     <div id="notifModal" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;">
         <div style="background:#fff;padding:32px 40px;border-radius:10px;max-width:400px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.15);">
             <h2>Notifications</h2>
             <ul style="list-style:none;padding:0;">
-            <?php foreach ($_SESSION['show_notification_modal'] as $notif): ?>
+            <?php foreach ($uniqueNotifs as $notif): ?>
                 <li style="margin-bottom:18px;">
                     <?php
                     // Try to extract job id from message if possible
@@ -239,7 +318,7 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                         $jobTitle = $m[1];
                         $jobId = $m[2];
                         echo htmlspecialchars($notif['message']) . '<br>';
-                        echo '<a href="jobs/details.php?id=' . intval($jobId) . '">Go to Job Details</a>';
+                        echo '<a href="/GigPlatform/jobs/details.php?id=' . intval($jobId) . '">Go to Job Details</a>';
                     } elseif (preg_match('/job: (.+)$/', $notif['message'], $m)) {
                         // fallback: just show jobs list
                         echo htmlspecialchars($notif['message']) . '<br>';
@@ -251,10 +330,17 @@ $takerReviewCount = getUserReviewCount($conn, $userId, 'poster_to_worker');
                 </li>
             <?php endforeach; ?>
             </ul>
-            <button onclick="document.getElementById('notifModal').style.display='none';">Close</button>
+            <button id="notifCloseBtn">Close</button>
         </div>
     </div>
-    <script>window.onload = function(){document.getElementById('notifModal').style.display='flex';}</script>
+    <script>
+    document.getElementById('notifCloseBtn').onclick = function() {
+        fetch('profile.php?mark_notifs_read=1', {method: 'POST'}).then(() => {
+            document.getElementById('notifModal').style.display = 'none';
+        });
+    };
+    window.onload = function(){document.getElementById('notifModal').style.display='flex';}
+    </script>
     <?php unset($_SESSION['show_notification_modal']); endif; ?>
 
 </body>

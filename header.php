@@ -15,6 +15,9 @@ if (session_status() == PHP_SESSION_NONE) {
             <li><a href="<?php echo isset($is_subdirectory) ? '../index.php' : 'index.php'; ?>">Home</a></li>
             <li><a href="<?php echo isset($is_subdirectory) ? '../jobs/browse.php' : 'jobs/browse.php'; ?>">Browse Jobs</a></li>
             <li><a href="<?php echo isset($is_subdirectory) ? '../jobs/create.php' : 'jobs/create.php'; ?>">Post a Job</a></li>
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <li><a href="<?php echo isset($is_subdirectory) ? '../admin/dashboard.php' : 'admin/dashboard.php'; ?>">Admin Dashboard</a></li>
+            <?php endif; ?>
         </ul>
     </nav>
     <div class="auth-buttons">

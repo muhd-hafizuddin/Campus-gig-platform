@@ -9,6 +9,34 @@ error_reporting(E_ALL);
 // Always start the session at the very top
 session_start();
 
+// --- 1. Database Connection ---
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "customerdb";
+$conn = mysqli_connect($servername, $username, $password, $dbname);
+
+// Immediately stop if the connection fails
+if (!$conn) {
+    error_log("Database Connection Failed: " . mysqli_connect_error());
+    showMessageBox('A database connection error occurred. Please try again later.', 'index.php');
+}
+
+// Now you can safely use $conn for the suspension check
+if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+    $sql = "SELECT is_active FROM user WHERE user_id = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $_SESSION['id']);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    if ($row && !$row['is_active']) {
+        session_destroy();
+        showMessageBox("Your account is suspended. Please contact support.", "login.html");
+    }
+}
+
 // Function to display a custom message box (replaces alert())
 function showMessageBox($message, $redirectUrl = '') {
     echo "<!DOCTYPE html>
@@ -43,20 +71,6 @@ function showMessageBox($message, $redirectUrl = '') {
     exit();
 }
 
-
-// --- 1. Database Connection ---
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "customerdb";
-
-$conn = mysqli_connect($servername, $username, $password, $dbname);
-
-// Immediately stop if the connection fails
-if (!$conn) {
-    error_log("Database Connection Failed: " . mysqli_connect_error());
-    showMessageBox('A database connection error occurred. Please try again later.', 'index.php');
-}
 
 // --- 2. Registration Logic ---
 if (isset($_POST['register'])) {
@@ -101,7 +115,7 @@ if (isset($_POST['register'])) {
     mysqli_stmt_close($check_stmt);
 
     // Prepare and execute the insert statement
-    $sql_query = "INSERT INTO user (name, email, password_hash, phone_number) VALUES (?, ?, ?, ?)";
+    $sql_query = "INSERT INTO user (name, email, password_hash, phone_number, role) VALUES (?, ?, ?, ?, 'user')";
     $stmt = mysqli_prepare($conn, $sql_query);
     if (!$stmt) {
         header('Location: register.php?name=' . urlencode($name) . '&email=' . urlencode($email) . '&phone=' . urlencode($phone) . '&error=internal');
@@ -127,7 +141,7 @@ if (isset($_POST['login'])) {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
-    $sql_query = "SELECT user_id, name, email, password_hash FROM user WHERE email = ?";
+    $sql_query = "SELECT user_id, name, email, password_hash, is_active, role FROM user WHERE email = ?";
     $stmt = mysqli_prepare($conn, $sql_query);
     if (!$stmt) {
         error_log("Prepare failed for login query: " . mysqli_error($conn));
@@ -139,10 +153,38 @@ if (isset($_POST['login'])) {
 
     if ($user = mysqli_fetch_assoc($result)) {
         if (password_verify($password, $user['password_hash'])) {
+            if (!$user['is_active']) {
+                showMessageBox("Your account is suspended. Please contact support.", "login.html");
+            }
             // --- SUCCESS ---
             $_SESSION['loggedin'] = true;
             $_SESSION['id'] = $user['user_id'];
             $_SESSION['name'] = $user['name'];
+            $_SESSION['role'] = $user['role'];
+            // Admin table sync
+            if ($user['role'] === 'admin') {
+                $sql_admin = "SELECT 1 FROM admin WHERE user_id = ?";
+                $stmt_admin = mysqli_prepare($conn, $sql_admin);
+                mysqli_stmt_bind_param($stmt_admin, "i", $user['user_id']);
+                mysqli_stmt_execute($stmt_admin);
+                mysqli_stmt_store_result($stmt_admin);
+                $exists = mysqli_stmt_num_rows($stmt_admin) > 0;
+                mysqli_stmt_close($stmt_admin);
+                if (!$exists) {
+                    $sql_insert = "INSERT INTO admin (user_id, permission_level, created_at) VALUES (?, 'support', NOW())";
+                    $stmt_insert = mysqli_prepare($conn, $sql_insert);
+                    mysqli_stmt_bind_param($stmt_insert, "i", $user['user_id']);
+                    mysqli_stmt_execute($stmt_insert);
+                    mysqli_stmt_close($stmt_insert);
+                }
+            } else {
+                // Remove from admin table if present
+                $sql_del = "DELETE FROM admin WHERE user_id = ?";
+                $stmt_del = mysqli_prepare($conn, $sql_del);
+                mysqli_stmt_bind_param($stmt_del, "i", $user['user_id']);
+                mysqli_stmt_execute($stmt_del);
+                mysqli_stmt_close($stmt_del);
+            }
             // Check for unread notifications
             $notif_sql = "SELECT * FROM notification WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC";
             $notif_stmt = mysqli_prepare($conn, $notif_sql);
@@ -159,7 +201,7 @@ if (isset($_POST['login'])) {
                     $_SESSION['show_notification_modal'] = $notifs;
                 }
             }
-            header("Location: profile.php");
+            header("Location: /GigPlatform/profile.php");
             exit();
         } else {
             // Password mismatch
@@ -197,7 +239,7 @@ function getCategories($conn) {
 }
 
 // Helper: Get average rating for a user as poster or job taker
-function getUserAverageRating($conn, $user_id, $type = 'worker_to_poster') {
+function getUserAverageRating($conn, $user_id, $type = 'freelancer_to_employer') {
     $sql = "SELECT AVG(rating) as avg_rating FROM review WHERE reviewee_id = ? AND review_type = ?";
     $stmt = mysqli_prepare($conn, $sql);
     if (!$stmt) return 0;
@@ -246,7 +288,7 @@ function getJobs($conn, $limit = 50, $category_id = null, $search = null) {
     $result = mysqli_stmt_get_result($stmt);
     $jobs = [];
     while ($row = mysqli_fetch_assoc($result)) {
-        $row['poster_rating'] = getUserAverageRating($conn, $row['poster_id'], 'worker_to_poster');
+        $row['poster_rating'] = getUserAverageRating($conn, $row['poster_id'], 'freelancer_to_employer');
         $jobs[] = $row;
     }
     mysqli_stmt_close($stmt);
@@ -313,7 +355,7 @@ function getUserJobs($conn, $user_id) {
                    (SELECT COUNT(*) FROM application a WHERE a.job_id = j.job_id) as application_count
             FROM job j 
             JOIN category c ON j.category_id = c.category_id 
-            WHERE j.user_id = ? 
+            WHERE j.user_id = ? AND j.status != 'end' 
             ORDER BY j.created_at DESC";
     
     $stmt = mysqli_prepare($conn, $sql);
@@ -382,7 +424,7 @@ function postJob($conn, $user_id, $title, $description, $budget, $deadline, $cat
 }
 
 // Soft delete job (set status)
-function softDeleteJob($conn, $job_id, $status = 'end') {
+function softDeleteJob($conn, $job_id, $status = 'cancelled') {
     $sql = "UPDATE job SET status = ?, updated_at = NOW() WHERE job_id = ?";
     $stmt = mysqli_prepare($conn, $sql);
     if (!$stmt) return false;
@@ -415,13 +457,36 @@ if (isset($_POST['postJob'])) {
     $deadline = $_POST['jobDeadline'] ?? '';
     $category_id = $_POST['jobCategory'] ?? 1;
     
+    // Store form data in session for repopulation on error
+    $_SESSION['job_form_data'] = [
+        'jobTitle' => $title,
+        'jobDescription' => $description,
+        'jobBudget' => $budget,
+        'jobDeadline' => $deadline,
+        'jobCategory' => $category_id
+    ];
+    
     if (empty($title) || empty($description) || empty($budget) || empty($deadline)) {
         showMessageBox("Please fill in all required fields.", "jobs/create.php");
     }
     
     $user_id = $_SESSION['id'];
     
+    // Validate deadline is not in the past
+    $deadline_date = strtotime($deadline);
+    $today = strtotime(date('Y-m-d'));
+    if ($deadline_date < $today) {
+        showMessageBox("Deadline cannot be in the past.", "jobs/create.php");
+    }
+    
     if (postJob($conn, $user_id, $title, $description, $budget, $deadline, $category_id)) {
+        // After successful job post:
+        unset($_SESSION['job_form_data']); // Clear form data on success
+        $sql = "UPDATE user SET jobs_posted = jobs_posted + 1 WHERE user_id = ?";
+        $stmt = mysqli_prepare($conn, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $user_id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
         showMessageBox("Job posted successfully!", "jobs/browse.php");
     } else {
         showMessageBox("Error posting job. Please try again.", "jobs/create.php");
@@ -444,9 +509,10 @@ if (isset($_POST['applyJob'])) {
         if ($job) {
             addNotification($conn, $job['user_id'], "You have a new applicant for your job: " . $job['title']);
         }
-        showMessageBox("Application submitted successfully!", "jobs/details.php?id=" . $job_id);
+        header("Location: /GigPlatform/jobs/details.php?id=$job_id");
+        exit();
     } else {
-        showMessageBox("Error submitting application or you have already applied.", "jobs/details.php?id=" . $job_id);
+        showMessageBox("Error submitting application or you have already applied.", "/GigPlatform/jobs/details.php?id=" . $job_id);
     }
 }
 
@@ -482,7 +548,7 @@ if ((isset($_POST['accept_applicant']) || isset($_POST['reject_applicant'])) && 
     // Check if the logged-in user is the poster of this job
     $job = getJobById($conn, $job_id);
     if (!$job || $job['user_id'] != $poster_id) {
-        showMessageBox("You are not authorized to perform this action.", "jobs/details.php?id=$job_id");
+        showMessageBox("You are not authorized to perform this action.", "/GigPlatform/jobs/details.php?id=$job_id");
     }
     $new_status = isset($_POST['accept_applicant']) ? 'accepted' : 'rejected';
     $sql = "UPDATE application SET status = ?, updated_at = NOW() WHERE job_id = ? AND user_id = ?";
@@ -492,14 +558,217 @@ if ((isset($_POST['accept_applicant']) || isset($_POST['reject_applicant'])) && 
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }
+    if ($new_status == 'accepted') {
+        // Set all other applications to rejected
+        $sql2 = "UPDATE application SET status = 'rejected', updated_at = NOW() WHERE job_id = ? AND user_id != ?";
+        $stmt2 = mysqli_prepare($conn, $sql2);
+        if ($stmt2) {
+            mysqli_stmt_bind_param($stmt2, "ii", $job_id, $applicant_id);
+            mysqli_stmt_execute($stmt2);
+            mysqli_stmt_close($stmt2);
+        }
+        // Set job status to assigned
+        $sql3 = "UPDATE job SET status = 'assigned', updated_at = NOW() WHERE job_id = ?";
+        $stmt3 = mysqli_prepare($conn, $sql3);
+        if ($stmt3) {
+            mysqli_stmt_bind_param($stmt3, "i", $job_id);
+            mysqli_stmt_execute($stmt3);
+            mysqli_stmt_close($stmt3);
+        }
+    }
     // Optionally, notify the applicant
     $msg = ($new_status == 'accepted') ? "Your application for job '{$job['title']}' was accepted!" : "Your application for job '{$job['title']}' was rejected.";
     addNotification($conn, $applicant_id, $msg);
-    header("Location: jobs/details.php?id=$job_id");
+    // After assigning the job:
+    $taker_id = intval($_POST['applicant_id']);
+    $sql = "UPDATE user SET jobs_taken = jobs_taken + 1 WHERE user_id = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $taker_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    header("Location: /GigPlatform/jobs/details.php?id=$job_id");
     exit();
 }
 
-function getUserReviewCount($conn, $user_id, $type = 'worker_to_poster') {
+// Handle job taker marking job as finished
+if (isset($_POST['mark_finished']) && isset($_POST['job_id'])) {
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        showMessageBox("You must be logged in to perform this action.", "jobs/browse.php");
+    }
+    $job_id = intval($_POST['job_id']);
+    $user_id = $_SESSION['id'];
+    // Check if this user is the assigned user for this job
+    $sql = "SELECT a.user_id, j.user_id as poster_id, j.title, j.status FROM application a JOIN job j ON a.job_id = j.job_id WHERE a.job_id = ? AND a.status = 'accepted' LIMIT 1";
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "i", $job_id);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $row = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($stmt);
+        if ($row && $row['user_id'] == $user_id && ($row['status'] == 'assigned' || $row['status'] == 'in progress')) {
+            // Set job status to completed
+            $sql2 = "UPDATE job SET status = 'completed', updated_at = NOW() WHERE job_id = ?";
+            $stmt2 = mysqli_prepare($conn, $sql2);
+            if ($stmt2) {
+                mysqli_stmt_bind_param($stmt2, "i", $job_id);
+                mysqli_stmt_execute($stmt2);
+                mysqli_stmt_close($stmt2);
+            }
+            // Notify the poster to review the job taker
+            $msg = "Your job '{$row['title']}' has been marked as finished. Please review the job taker.";
+            addNotification($conn, $row['poster_id'], $msg);
+            showMessageBox("Job marked as finished! The job poster will be asked to review you.", "/GigPlatform/jobs/details.php?id=$job_id");
+        } else {
+            showMessageBox("You are not authorized to finish this job.", "/GigPlatform/jobs/details.php?id=$job_id");
+        }
+    } else {
+        showMessageBox("Invalid job or application.", "/GigPlatform/jobs/details.php?id=$job_id");
+    }
+    exit();
+}
+
+// Handle job poster rating the job taker (poster_to_worker)
+if (isset($_POST['rate_taker'], $_POST['job_id'], $_POST['rating']) && isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+    $job_id = intval($_POST['job_id']);
+    $rating = intval($_POST['rating']);
+    $reviewer_id = $_SESSION['id'];
+    // Get the assigned user (job taker)
+    $sql = "SELECT a.user_id FROM application a WHERE a.job_id = ? AND a.status = 'accepted' LIMIT 1";
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "i", $job_id);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $row = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($stmt);
+        if ($row) {
+            $reviewee_id = $row['user_id'];
+            // Prevent duplicate reviews
+            $sql_check = "SELECT 1 FROM review WHERE reviewer_id = ? AND reviewee_id = ? AND job_id = ? AND review_type = 'employer_to_freelancer'";
+            $stmt_check = mysqli_prepare($conn, $sql_check);
+            mysqli_stmt_bind_param($stmt_check, "iii", $reviewer_id, $reviewee_id, $job_id);
+            mysqli_stmt_execute($stmt_check);
+            mysqli_stmt_store_result($stmt_check);
+            $alreadyRated = mysqli_stmt_num_rows($stmt_check) > 0;
+            mysqli_stmt_close($stmt_check);
+            if (!$alreadyRated) {
+                $comment = isset($_POST['comment']) ? trim($_POST['comment']) : null;
+                $sql_insert = "INSERT INTO review (reviewer_id, reviewee_id, job_id, rating, review_type, comment, created_at) VALUES (?, ?, ?, ?, 'employer_to_freelancer', ?, NOW())";
+                $stmt_insert = mysqli_prepare($conn, $sql_insert);
+                mysqli_stmt_bind_param($stmt_insert, "iiiii", $reviewer_id, $reviewee_id, $job_id, $rating, $comment);
+                if (mysqli_stmt_execute($stmt_insert)) {
+                    mysqli_stmt_close($stmt_insert);
+                    // Set job status to completed
+                    $sql_complete = "UPDATE job SET status = 'completed', updated_at = NOW() WHERE job_id = ? AND status != 'completed'";
+                    $stmt_complete = mysqli_prepare($conn, $sql_complete);
+                    mysqli_stmt_bind_param($stmt_complete, "i", $job_id);
+                    mysqli_stmt_execute($stmt_complete);
+                    mysqli_stmt_close($stmt_complete);
+                    // Get reviewee name for message
+                    $sql_name = "SELECT name FROM user WHERE user_id = ?";
+                    $stmt_name = mysqli_prepare($conn, $sql_name);
+                    mysqli_stmt_bind_param($stmt_name, "i", $reviewee_id);
+                    mysqli_stmt_execute($stmt_name);
+                    $result_name = mysqli_stmt_get_result($stmt_name);
+                    $row_name = mysqli_fetch_assoc($result_name);
+                    $reviewee_name = $row_name ? $row_name['name'] : '';
+                    mysqli_stmt_close($stmt_name);
+                    $stars = str_repeat('★', $rating);
+                    showMessageBox("You rated $reviewee_name $stars as a poster", "/GigPlatform/jobs/details.php?id=$job_id");
+                    // Update taker's average rating and jobs_taken based on all poster_to_worker reviews for this user
+                    $sql = "SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM review WHERE reviewee_id = ? AND review_type = 'employer_to_freelancer'";
+                    $stmt = mysqli_prepare($conn, $sql);
+                    mysqli_stmt_bind_param($stmt, "i", $reviewee_id);
+                    mysqli_stmt_execute($stmt);
+                    $result = mysqli_stmt_get_result($stmt);
+                    $row = mysqli_fetch_assoc($result);
+                    $avg = $row ? round($row['avg_rating'], 2) : 0;
+                    $count = $row ? $row['count'] : 0;
+                    $sql2 = "UPDATE user SET rating_as_job_taker = ?, jobs_taken = ? WHERE user_id = ?";
+                    $stmt2 = mysqli_prepare($conn, $sql2);
+                    mysqli_stmt_bind_param($stmt2, "dii", $avg, $count, $reviewee_id);
+                    mysqli_stmt_execute($stmt2);
+                    mysqli_stmt_close($stmt2);
+                } else {
+                    mysqli_stmt_close($stmt_insert);
+                    header("Location: /GigPlatform/jobs/details.php?id=$job_id&msg=review_error");
+                    exit();
+                }
+            } else {
+                showMessageBox("You have already rated this user for this job.", "/GigPlatform/jobs/details.php?id=$job_id");
+            }
+        }
+    }
+}
+
+// Handle job taker rating the poster after job completion (worker_to_poster)
+if (isset($_POST['rate_poster']) && isset($_POST['job_id']) && isset($_POST['rating'])) {
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        showMessageBox("You must be logged in to perform this action.", "jobs/browse.php");
+    }
+    $job_id = intval($_POST['job_id']);
+    $rating = intval($_POST['rating']);
+    $reviewer_id = $_SESSION['id'];
+    // Get the job poster
+    $job = getJobById($conn, $job_id);
+    if (!$job) {
+        showMessageBox("Invalid job.", "jobs/browse.php");
+    }
+    $reviewee_id = $job['user_id'];
+    // Check if already rated
+    $sql = "SELECT 1 FROM review WHERE reviewer_id = ? AND reviewee_id = ? AND job_id = ? AND review_type = 'freelancer_to_employer'";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "iii", $reviewer_id, $reviewee_id, $job_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_store_result($stmt);
+    $alreadyRated = mysqli_stmt_num_rows($stmt) > 0;
+    mysqli_stmt_close($stmt);
+    if ($alreadyRated) {
+        showMessageBox("You have already rated this user for this job.", "/GigPlatform/jobs/details.php?id=$job_id");
+    }
+    // Insert review
+    $comment = isset($_POST['comment']) ? trim($_POST['comment']) : null;
+    $sql = "INSERT INTO review (reviewer_id, reviewee_id, job_id, rating, review_type, comment, created_at) VALUES (?, ?, ?, ?, 'freelancer_to_employer', ?, NOW())";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "iiiii", $reviewer_id, $reviewee_id, $job_id, $rating, $comment);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    // Set job status to completed
+    $sql_complete = "UPDATE job SET status = 'completed', updated_at = NOW() WHERE job_id = ? AND status != 'completed'";
+    $stmt_complete = mysqli_prepare($conn, $sql_complete);
+    mysqli_stmt_bind_param($stmt_complete, "i", $job_id);
+    mysqli_stmt_execute($stmt_complete);
+    mysqli_stmt_close($stmt_complete);
+    // Get reviewee name for message
+    $sql_name = "SELECT name FROM user WHERE user_id = ?";
+    $stmt_name = mysqli_prepare($conn, $sql_name);
+    mysqli_stmt_bind_param($stmt_name, "i", $reviewee_id);
+    mysqli_stmt_execute($stmt_name);
+    $result_name = mysqli_stmt_get_result($stmt_name);
+    $row_name = mysqli_fetch_assoc($result_name);
+    $reviewee_name = $row_name ? $row_name['name'] : '';
+    mysqli_stmt_close($stmt_name);
+    $stars = str_repeat('★', $rating);
+    showMessageBox("You rated $reviewee_name $stars as a worker", "/GigPlatform/jobs/details.php?id=$job_id");
+    // Update poster's average rating and jobs_posted based on all worker_to_poster reviews for this user
+    $sql = "SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM review WHERE reviewee_id = ? AND review_type = 'freelancer_to_employer'";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $reviewee_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    $avg = $row ? round($row['avg_rating'], 2) : 0;
+    $count = $row ? $row['count'] : 0;
+    $sql2 = "UPDATE user SET rating_as_poster = ?, jobs_posted = ? WHERE user_id = ?";
+    $stmt2 = mysqli_prepare($conn, $sql2);
+    mysqli_stmt_bind_param($stmt2, "dii", $avg, $count, $reviewee_id);
+    mysqli_stmt_execute($stmt2);
+    mysqli_stmt_close($stmt2);
+    exit();
+}
+
+function getUserReviewCount($conn, $user_id, $type = 'freelancer_to_employer') {
     $sql = "SELECT COUNT(*) as review_count FROM review WHERE reviewee_id = ? AND review_type = ?";
     $stmt = mysqli_prepare($conn, $sql);
     if (!$stmt) return 0;
@@ -509,6 +778,26 @@ function getUserReviewCount($conn, $user_id, $type = 'worker_to_poster') {
     $row = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
     return $row && $row['review_count'] ? intval($row['review_count']) : 0;
+}
+
+// Handle application withdrawal
+if (isset($_POST['withdraw_application']) && isset($_POST['job_id'])) {
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        showMessageBox("You must be logged in to withdraw an application.", "login.html");
+    }
+    $job_id = intval($_POST['job_id']);
+    $user_id = $_SESSION['id'];
+    $sql = "UPDATE application SET status = 'withdrawn', updated_at = NOW() WHERE job_id = ? AND user_id = ? AND status = 'pending'";
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "ii", $job_id, $user_id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        showMessageBox("Application withdrawn.", "/GigPlatform/jobs/details.php?id=$job_id");
+    } else {
+        showMessageBox("Error withdrawing application.", "/GigPlatform/jobs/details.php?id=$job_id");
+    }
+    exit();
 }
 
 ?>

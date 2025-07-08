@@ -42,6 +42,11 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     <?php 
     $is_subdirectory = true;
     include '../header.php'; 
+
+    // Pre-fill form values from session if available
+    $job_form_data = $_SESSION['job_form_data'] ?? [];
+    // Clear the session data after using it
+    unset($_SESSION['job_form_data']);
     ?>
 
     <main class="container">
@@ -53,12 +58,12 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
                 <!-- All your form groups from create.html go here -->
                 <div class="form-group">
                     <label for="jobTitle">Job Title*</label>
-                    <input type="text" id="jobTitle" name="jobTitle" required placeholder="e.g. Graphic Designer for Event Poster">
+                    <input type="text" id="jobTitle" name="jobTitle" required placeholder="e.g. Graphic Designer for Event Poster" value="<?php echo htmlspecialchars($job_form_data['jobTitle'] ?? ''); ?>">
                 </div>
                 
                 <div class="form-group">
                     <label for="jobDescription">Job Description*</label>
-                    <textarea id="jobDescription" name="jobDescription" required placeholder="Describe the job in detail..."></textarea>
+                    <textarea id="jobDescription" name="jobDescription" required placeholder="Describe the job in detail..."><?php echo htmlspecialchars($job_form_data['jobDescription'] ?? ''); ?></textarea>
                 </div>
 
                 <div class="form-row">
@@ -69,7 +74,8 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
                             <?php
                             $categories = getCategories($conn);
                             foreach($categories as $category) {
-                                echo '<option value="' . htmlspecialchars($category['category_id']) . '">' . htmlspecialchars($category['name']) . '</option>';
+                                $selected = (isset($job_form_data['jobCategory']) && $job_form_data['jobCategory'] == $category['category_id']) ? 'selected' : '';
+                                echo '<option value="' . htmlspecialchars($category['category_id']) . '" ' . $selected . '>' . htmlspecialchars($category['name']) . '</option>';
                             }
                             ?>
                         </select>
@@ -79,11 +85,11 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="jobBudget">Budget (RM)*</label>
-                        <input type="number" id="jobBudget" name="jobBudget" min="0" step="5" required placeholder="50">
+                        <input type="number" id="jobBudget" name="jobBudget" min="0" step="5" required placeholder="50" value="<?php echo htmlspecialchars($job_form_data['jobBudget'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
                         <label for="jobDeadline">Deadline*</label>
-                        <input type="date" id="jobDeadline" name="jobDeadline" required>
+                        <input type="date" id="jobDeadline" name="jobDeadline" required value="<?php echo htmlspecialchars($job_form_data['jobDeadline'] ?? ''); ?>">
                     </div>
                 </div>
                 

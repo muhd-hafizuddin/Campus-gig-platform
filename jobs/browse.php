@@ -31,6 +31,10 @@ require_once '../customerdb.php'; // Changed path to correctly include customerd
         .view-job-btn:hover { background-color: #0056b3; }
         .btn-secondary { background-color: #6c757d; color: white; padding: 0.8rem 1rem; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; }
         .btn-secondary:hover { background-color: #545b62; }
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        main.container { flex: 1 0 auto; }
+        footer { flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -87,7 +91,7 @@ require_once '../customerdb.php'; // Changed path to correctly include customerd
                     echo '<p class="job-budget">Budget: RM ' . htmlspecialchars($job['budget']) . '</p>';
                     echo '<p class="job-description">' . htmlspecialchars(substr($job['description'], 0, 150)) . '...</p>';
                     echo '<p class="job-date">Posted: ' . date('M j, Y', strtotime($job['created_at'])) . '</p>';
-                    echo '<a href="details.php?id=' . htmlspecialchars($job['job_id']) . '" class="view-job-btn">View Details</a>';
+                    echo '<a href="/GigPlatform/jobs/details.php?id=' . htmlspecialchars($job['job_id']) . '" class="view-job-btn">View Details</a>';
                     echo '</div>';
                 }
             } else {
